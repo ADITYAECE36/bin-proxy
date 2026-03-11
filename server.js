@@ -1,25 +1,57 @@
 const express = require('express');
 const app = express();
 
+// ── Body parsing ──────────────────────────────────
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// ── CORS headers ──────────────────────────────────
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+// ── Supabase credentials ──────────────────────────
 const SUPABASE_URL = 'https://fmirjzxdqerqrqfacpgv.supabase.co';
 const SUPABASE_KEY = 'your-anon-key-here'; // ← paste your anon key
 
+// ── Health check ──────────────────────────────────
 app.get('/', (req, res) => {
-  res.json({ status: 'online', message: '🚀 Bin Proxy Running!' });
+  res.json({ 
+    status: 'online', 
+    message: '🚀 Bin Proxy Running!' 
+  });
 });
 
+// ── Receive data from ESP32 ───────────────────────
 app.post('/api/data', async (req, res) => {
-  console.log('📥 Received:', req.body);
+  console.log('📥 Raw body received:', req.body);
 
-  const { bin_id, distance_cm, fill_level, status } = req.body;
+  // Handle both parsed and string body
+  let data = req.body;
+  if (typeof data === 'string') {
+    try { 
+      data = JSON.parse(data); 
+    } catch (e) { 
+      console.log('❌ JSON parse error:', e.message);
+      return res.status(400).json({ error: 'Invalid JSON' }); 
+    }
+  }
 
+  const { bin_id, distance_cm, fill_level, status } = data;
+  console.log('📦 Parsed data:', { bin_id, distance_cm, fill_level, status });
+
+  // Validate required fields
   if (!bin_id) {
+    console.log('❌ Missing bin_id');
     return res.status(400).json({ error: 'Missing bin_id' });
   }
 
   try {
+    // Forward to Supabase
+    console.log('📤 Sending to Supabase...');
     const response = await fetch(`${SUPABASE_URL}/rest/v1/bin_data`, {
       method: 'POST',
       headers: {
@@ -28,23 +60,37 @@ app.post('/api/data', async (req, res) => {
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Prefer':        'return=minimal'
       },
-      body: JSON.stringify({ bin_id, distance_cm, fill_level, status })
+      body: JSON.stringify({ 
+        bin_id, 
+        distance_cm, 
+        fill_level, 
+        status 
+      })
     });
 
+    console.log('📩 Supabase response status:', response.status);
+
     if (response.status === 201 || response.status === 200) {
-      console.log('✅ Saved! BIN:', bin_id);
-      return res.status(200).json({ success: true });
+      console.log('✅ Data saved! BIN:', bin_id);
+      return res.status(200).json({ 
+        success: true,
+        message: `BIN ${bin_id} data saved!`
+      });
     } else {
       const err = await response.text();
+      console.log('❌ Supabase error:', err);
       return res.status(400).json({ error: err });
     }
 
   } catch (error) {
+    console.log('❌ Server error:', error.message);
     return res.status(500).json({ error: error.message });
   }
 });
 
-const PORT = process.env.PORT || 3000;
+// ── Start server ──────────────────────────────────
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Proxy server running on port ${PORT}`);
+  console.log(`📡 Supabase URL: ${SUPABASE_URL}`);
 });
