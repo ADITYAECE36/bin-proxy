@@ -15,7 +15,7 @@ app.use((req, res, next) => {
 
 // ── Supabase credentials ──────────────────────────
 const SUPABASE_URL = 'https://fmirjzxdqerqrqfacpgv.supabase.co';
-const SUPABASE_KEY = 'your-anon-key-here'; // ← paste your anon key
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtaXJqenhkcWVycXJxZmFjcGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMTIwNDgsImV4cCI6MjA4ODc4ODA0OH0.txIajKaJp6hM0QrWdKCaIyHeZXxif2OnoW7k2G1WK9Y'; // ← paste your anon key
 
 // ── Health check ──────────────────────────────────
 app.get('/', (req, res) => {
